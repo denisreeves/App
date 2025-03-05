@@ -147,7 +147,8 @@ def admin_login():
         return jsonify({'success': False, 'message': 'Missing email or password'}), 400
         
     email = data['email'].lower().strip()
-    password_hash = hash_password(data['password'])
+    # password_hash = hash_password(data['password'])
+    password_hash =data['password']
     
     # Check if user exists and is admin
     user = get_user_by_email(email)
