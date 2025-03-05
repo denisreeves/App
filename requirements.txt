@@ -7,3 +7,4 @@ numpy
 email-validator
 bcrypt
 PyJWT
+openpyxl
