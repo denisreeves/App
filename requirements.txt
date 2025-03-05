@@ -6,4 +6,4 @@ pandas
 numpy
 email-validator
 bcrypt
-jwt
+PyJWT
