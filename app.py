@@ -26,9 +26,6 @@ import numpy as np
 from pathlib import Path
 #from transformers import pipeline
 
-# Load AI model for email content generation
-#generator = pipeline("text-generation", model="gpt2")
-
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -140,38 +137,42 @@ def generate_email_content(prompt):
 def admin_login_page():
     """Render admin login page"""
     return render_template('admin_login.html')
-
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
-    """Handle admin login"""
     data = request.json
     
     if not data or not data.get('email') or not data.get('password'):
+        print("Login failed: Missing email or password")
         return jsonify({'success': False, 'message': 'Missing email or password'}), 400
         
     email = data['email'].lower().strip()
-    # password_hash = hash_password(data['password'])
-    password_hash =data['password']
-    
-    # Check if user exists and is admin
+    entered_password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
+
     user = get_user_by_email(email)
-    
-    if not user or user['password'] != password_hash or email != 'admin@example.com':
+
+    print(f"Login attempt for: {email}")
+    print(f"User found in DB: {user}")
+
+    if user:
+        print(f"Stored Password Hash: {user['password']}")
+        print(f"Entered Password Hash: {entered_password_hash}")
+
+    if not user or user['password'] != entered_password_hash or email != 'admin@example.com':
+        print("Login failed: Invalid credentials")
         return jsonify({'success': False, 'message': 'Invalid admin credentials'}), 401
-    
+
     # Generate admin JWT token
     token = jwt.encode({
         'user_id': user['id'],
         'email': user['email'],
         'is_admin': True,
-        'exp': datetime.utcnow() + timedelta(hours=12)  # Admin token expires in 12 hours
+        'exp': datetime.utcnow() + timedelta(hours=12)
     }, JWT_SECRET, algorithm="HS256")
-    
-    return jsonify({
-        'success': True,
-        'message': 'Admin login successful',
-        'token': token
-    }), 200
+
+    print("Admin login successful!")
+    return jsonify({'success': True, 'message': 'Admin login successful', 'token': token}), 200
+
+
 
 # Admin authorization decorator
 def admin_required(f):
@@ -607,18 +608,19 @@ def get_email_list_details(current_admin, list_id):
         return jsonify({'success': False, 'message': f'Error fetching email list details: {str(e)}'}), 500
     
 @app.route('/api/statistics', methods=['GET'])
-def get_statistics():
+@admin_required
+def get_statistics(current_admin):
     """Return system statistics"""
     try:
         with sqlite3.connect(DATABASE_PATH) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            # Get user count
+            # Get total users
             cursor.execute("SELECT COUNT(*) AS total_users FROM users")
             total_users = cursor.fetchone()["total_users"]
 
-            # Check if sent_emails table exists before querying
+            # Check if sent_emails table exists
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sent_emails'")
             table_exists = cursor.fetchone()
             
@@ -627,15 +629,28 @@ def get_statistics():
                 cursor.execute("SELECT COUNT(*) AS total_emails FROM sent_emails")
                 total_emails = cursor.fetchone()["total_emails"]
 
+            # Fetch user signup trends (last 7 days)
+            cursor.execute("""
+                SELECT DATE(created_at) as signup_date, COUNT(*) as signup_count
+                FROM users
+                WHERE created_at >= DATE('now', '-7 days')
+                GROUP BY signup_date
+                ORDER BY signup_date ASC
+            """)
+            user_signup_trends = [{"date": row["signup_date"], "count": row["signup_count"]} for row in cursor.fetchall()]
+
             return jsonify({
                 "success": True,
                 "statistics": {
                     "total_users": total_users,
-                    "total_emails": total_emails
+                    "total_emails": total_emails,
+                    "user_signup_trends": user_signup_trends
                 }
             })
+
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
 
 # Update the data-visualization route to better handle Excel files
 @app.route('/data-visualization', methods=['GET', 'POST'])
