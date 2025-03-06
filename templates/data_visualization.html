@@ -343,7 +343,7 @@
 <body>
     <!-- Sidebar with Logo and Back Button -->
     <div class="sidebar">
-        <h2 class="assistant-title">Arrow - Data Visualization ➜</h2>
+        <h2 class="assistant-title">Arrow - Spark Tutorial ➜</h2>
         <button id="back-to-arrow-button" class="sidebar-button">Back to Arrow</button>
     </div>
 
@@ -1072,29 +1072,36 @@ document.getElementById('back-to-arrow-button').addEventListener('click', functi
         }
 
         // Handle download results button click
-        downloadButton.addEventListener('click', function() {
-            if (typeof XLSX === 'undefined') {
-                alert('Excel library not loaded. Please refresh and try again.');
-                return;
-            }
-            
-            // Create a new workbook
-            const workbook = XLSX.utils.book_new();
-            
-            // Create a worksheet
-            const worksheetData = [selectedHeaders];
-            displayedData.forEach(row => {
-                const rowData = selectedHeaders.map(header => row[header]);
-                worksheetData.push(rowData);
-            });
-            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-            
-            // Add worksheet to workbook
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
-            
-            // Write workbook to file
-            XLSX.writeFile(workbook, 'results.xlsx');
+        document.getElementById('download-results-button').addEventListener('click', function() {
+    let filename = prompt("Enter the filename for the downloaded file (without extension):", "filtered_data");
+
+    if (filename) {
+        // Ensure the filename is safe (remove invalid characters)
+        filename = filename.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+        // Create a new workbook
+        const workbook = XLSX.utils.book_new();
+
+        // Create a worksheet
+        const worksheetData = [selectedHeaders]; // First row as headers
+        displayedData.forEach(row => {
+            const rowData = selectedHeaders.map(header => row[header] || ""); // Ensure no undefined values
+            worksheetData.push(rowData);
         });
+        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+        // Auto-adjust column width (optional)
+        const columnWidths = selectedHeaders.map(header => ({ wch: Math.max(header.length, 10) })); 
+        worksheet['!cols'] = columnWidths;
+
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
+
+        // Trigger download with custom filename
+        XLSX.writeFile(workbook, filename + ".xlsx");
+    }
+});
+
 
         // Handle header dropdown button click
         headerDropdownButton.addEventListener('click', function() {
