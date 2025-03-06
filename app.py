@@ -24,10 +24,10 @@ from io import BytesIO
 from flask import Response, session
 import numpy as np
 from pathlib import Path
-from transformers import pipeline
+#from transformers import pipeline
 
 # Load AI model for email content generation
-generator = pipeline("text-generation", model="gpt2")
+#generator = pipeline("text-generation", model="gpt2")
 
 
 # Suppress warnings
