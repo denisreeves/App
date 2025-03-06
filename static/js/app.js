@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 userInfoElement.innerHTML = `
                     <p>Welcome, ${data.user.name}</p>
                     <button id="logout-btn">Logout</button>
-                    <button id="data-visualization-btn" class="data-viz-button">📊 Spark Tutorial </button>
+                    <button id="data-visualization-btn" class="data-viz-button">📊 Spark </button>
                 `;
                 document.querySelector('.sidebar').appendChild(userInfoElement);
 
