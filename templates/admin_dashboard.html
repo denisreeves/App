@@ -913,6 +913,11 @@ document.getElementById('email-lists-tab-btn').addEventListener('click', functio
 });
 
 // Load statistics
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadStatistics();
+});
+
 async function loadStatistics() {
     const statisticsContainer = document.getElementById('statistics-container');
     statisticsContainer.innerHTML = `
@@ -923,30 +928,100 @@ async function loadStatistics() {
         </div>
     `;
 
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) {
+        console.error("No admin token found. Redirecting to login...");
+        window.location.href = '/admin';
+        return;
+    }
+
     try {
-        const response = await fetch('/api/admin/statistics', {
+        const response = await fetch('/api/statistics', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
-                'Content-Type': 'application/json',
-            },
+                'Authorization': `Bearer ${adminToken}`,
+                'Content-Type': 'application/json'
+            }
         });
+
+        if (response.status === 401) {
+            console.error("Unauthorized. Redirecting to login...");
+            localStorage.removeItem('adminToken'); // Clear invalid token
+            window.location.href = '/admin';
+            return;
+        }
 
         const data = await response.json();
 
-        if (data.success) {
-            renderStatistics(data.statistics);
-            renderCharts(data.statistics);
-        } else {
-            showAlert('danger', data.message);
-            statisticsContainer.innerHTML = `<p class="text-center text-danger">${data.message}</p>`;
+        if (!data.success) {
+            throw new Error(data.message);
         }
+
+        const stats = data.statistics;
+
+        statisticsContainer.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Users</h5>
+                            <p class="display-6">${stats.total_users}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Emails Sent</h5>
+                            <p class="display-6">${stats.total_emails}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">New Users (Last 7 Days)</h5>
+                            <canvas id="userSignupChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        renderUserSignupChart(stats.user_signup_trends);
     } catch (error) {
-        console.error('Error:', error);
-        showAlert('danger', 'Failed to load statistics. Please try again.');
-        statisticsContainer.innerHTML = `<p class="text-center text-danger">Failed to load statistics. Please try again.</p>`;
+        console.error("Error loading statistics:", error);
+        statisticsContainer.innerHTML = `<p class="text-danger text-center">Failed to load statistics: ${error.message}</p>`;
     }
 }
+
+
+function renderUserSignupChart(data) {
+    const ctx = document.getElementById('userSignupChart').getContext('2d');
+    const labels = data.map(entry => entry.date);
+    const counts = data.map(entry => entry.count);
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'New Users',
+                data: counts,
+                borderColor: 'rgb(75, 192, 192)',
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+
 
 // Render statistics
 function renderStatistics(statistics) {
